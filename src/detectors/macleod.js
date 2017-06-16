@@ -6,7 +6,7 @@ module.exports = function(config) {
       /**
        * The expected size of an audio buffer (in samples).
        */
-  var DEFAULT_BUFFER_SIZE = 1024,
+  const DEFAULT_BUFFER_SIZE = 1024,
 
       /**
        * Defines the relative size the chosen peak (pitch) has. 0.93 means: choose
@@ -50,9 +50,14 @@ module.exports = function(config) {
       nsdf = new Float32Array(bufferSize),
 
       /**
+       * The result of the pitch detection iteration.
+       */
+      result = {};
+
+      /**
        * The x and y coordinate of the top of the curve (nsdf).
        */
-      turningPointX,
+  let turningPointX,
       turningPointY,
 
       /**
@@ -69,23 +74,18 @@ module.exports = function(config) {
        * A list of estimates of the amplitudes corresponding with the period
        * estimates.
        */
-      ampEstimates = [],
-
-      /**
-       * The result of the pitch detection iteration.
-       */
-      result = {};
+      ampEstimates = [];
 
   /**
    * Implements the normalized square difference function. See section 4 (and
    * the explanation before) in the MPM article. This calculation can be
    * optimized by using an FFT. The results should remain the same.
    */
-  var normalizedSquareDifference = function(float32AudioBuffer) {
-    for (var tau = 0; tau < float32AudioBuffer.length; tau++) {
-      var acf = 0,
+  const normalizedSquareDifference = function(float32AudioBuffer) {
+    for (let tau = 0; tau < float32AudioBuffer.length; tau++) {
+      let acf = 0,
           divisorM = 0;
-      for (var i = 0; i < float32AudioBuffer.length - tau; i++) {
+      for (let i = 0; i < float32AudioBuffer.length - tau; i++) {
         acf += float32AudioBuffer[i] * float32AudioBuffer[i+tau];
         divisorM += float32AudioBuffer[i] * float32AudioBuffer[i] + float32AudioBuffer[i + tau] * float32AudioBuffer[i + tau];
       }
@@ -97,8 +97,8 @@ module.exports = function(config) {
    * Finds the x value corresponding with the peak of a parabola.
    * Interpolates between three consecutive points centered on tau.
    */
-  var parabolicInterpolation = function(tau) {
-    var nsdfa = nsdf[tau - 1],
+  const parabolicInterpolation = function(tau) {
+    const nsdfa = nsdf[tau - 1],
         nsdfb = nsdf[tau],
         nsdfc = nsdf[tau + 1],
         bValue = tau,
@@ -107,15 +107,15 @@ module.exports = function(config) {
       turningPointX = bValue;
       turningPointY = nsdfb;
     } else {
-      var delta = nsdfa - nsdfc;
+      const delta = nsdfa - nsdfc;
       turningPointX = bValue + delta / (2 * bottom);
       turningPointY = nsdfb - delta * delta / (8 * bottom);
     }
   };
 
   // Finds the highest value between each pair of positive zero crossings.
-  var peakPicking = function() {
-    var pos = 0,
+  const peakPicking = function() {
+    let pos = 0,
         curMaxPos = 0;
 
     // find the first negative zero crossing.
@@ -165,7 +165,7 @@ module.exports = function(config) {
   return function(float32AudioBuffer) {
 
     // 0. Clear old results.
-    var pitch;
+    let pitch;
     maxPositions = [];
     periodEstimates = [];
     ampEstimates = [];
@@ -175,10 +175,10 @@ module.exports = function(config) {
     // 2. Peak picking time: time to pick some peaks.
     peakPicking();
 
-    var highestAmplitude = -Infinity;
+    let highestAmplitude = -Infinity;
 
-    for (var i = 0; i < maxPositions.length; i++) {
-      tau = maxPositions[i];
+    for (let i = 0; i < maxPositions.length; i++) {
+      const tau = maxPositions[i];
       // make sure every annotation has a probability attached
       highestAmplitude = Math.max(highestAmplitude, nsdf[tau]);
 
@@ -197,17 +197,17 @@ module.exports = function(config) {
       // use the overall maximum to calculate a cutoff.
       // The cutoff value is based on the highest value and a relative
       // threshold.
-      var actualCutoff = cutoff * highestAmplitude,
-          periodIndex = 0;
+      const actualCutoff = cutoff * highestAmplitude;
+      let periodIndex = 0;
 
-      for (var i = 0; i < ampEstimates.length; i++) {
+      for (let i = 0; i < ampEstimates.length; i++) {
         if (ampEstimates[i] >= actualCutoff) {
           periodIndex = i;
           break;
         }
       }
 
-      var period = periodEstimates[periodIndex],
+      const period = periodEstimates[periodIndex],
           pitchEstimate = sampleRate / period;
 
       if (pitchEstimate > LOWER_PITCH_CUTOFF) {
@@ -225,4 +225,4 @@ module.exports = function(config) {
     result.freq = pitch;
     return result;
   };
-}
+};
